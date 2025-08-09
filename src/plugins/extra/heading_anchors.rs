@@ -61,7 +61,9 @@ impl CoreRule for AddHeadingAnchors {
         let slugify = md.ext.get::<SlugifyFunction>().copied().unwrap_or_default().0;
 
         root.walk_mut(|node, _| {
-            if node.is::<ATXHeading>() || node.is::<SetextHeader>() {
+            if (node.is::<ATXHeading>() || node.is::<SetextHeader>())
+                && node.attrs.iter().all(|(key, _)| key != "id")
+            {
                 node.attrs.push(("id".into(), slugify(&node.collect_text())));
             }
         });
