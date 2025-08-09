@@ -6,6 +6,7 @@
 //!  - beautify links (cut "http://" from links and shorten paths)
 //!  - smartquotes and typographer
 //!  - code block highlighting using `syntect`
+//!  - identifiers, classes and attributes (`{#id .class key=value}`)
 //!
 //! ```rust
 //! let md = &mut markdown_it::MarkdownIt::new();
@@ -18,6 +19,7 @@
 //! let html = md.parse(r#"Markdown done "The Right Way(TM)""#).render();
 //! assert_eq!(html.trim(), r#"<p>Markdown done “The Right Way™”</p>"#);
 //! ```
+pub mod attrs;
 pub mod beautify_links;
 pub mod heading_anchors;
 #[cfg(feature = "linkify")]
