@@ -1,13 +1,18 @@
 //! Syntax highlighting for code blocks
-use syntect::highlighting::ThemeSet;
-use syntect::html::highlighted_html_for_string;
-use syntect::parsing::SyntaxSet;
 
-use crate::parser::core::CoreRule;
-use crate::parser::extset::MarkdownItExt;
-use crate::plugins::cmark::block::code::CodeBlock;
-use crate::plugins::cmark::block::fence::CodeFence;
-use crate::{MarkdownIt, Node, NodeValue, Renderer};
+pub use syntect;
+
+use syntect::{
+    html::{ClassStyle, ClassedHTMLGenerator},
+    parsing::SyntaxSet,
+    util::LinesWithEndings,
+};
+
+use crate::{
+    MarkdownIt, Node, NodeValue, Renderer,
+    parser::core::CoreRule,
+    plugins::cmark::block::{code::CodeBlock, fence::CodeFence},
+};
 
 #[derive(Debug)]
 pub struct SyntectSnippet {
@@ -20,54 +25,52 @@ impl NodeValue for SyntectSnippet {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-struct SyntectSettings(&'static str);
-impl MarkdownItExt for SyntectSettings {}
-
-impl Default for SyntectSettings {
-    fn default() -> Self {
-        Self("InspiredGitHub")
-    }
-}
-
 pub fn add(md: &mut MarkdownIt) {
     md.add_rule::<SyntectRule>();
 }
 
-pub fn set_theme(md: &mut MarkdownIt, theme: &'static str) {
-    md.ext.insert(SyntectSettings(theme));
-}
-
 pub struct SyntectRule;
 impl CoreRule for SyntectRule {
-    fn run(root: &mut Node, md: &MarkdownIt) {
+    fn run(root: &mut Node, _: &MarkdownIt) {
         let ss = SyntaxSet::load_defaults_newlines();
-        let ts = ThemeSet::load_defaults();
-        let theme = &ts.themes[md.ext.get::<SyntectSettings>().copied().unwrap_or_default().0];
 
         root.walk_mut(|node, _| {
-            let mut content = None;
-            let mut language = None;
-
-            if let Some(data) = node.cast::<CodeBlock>() {
-                content = Some(&data.content);
+            let (content, language) = if let Some(data) = node.cast::<CodeBlock>() {
+                (Some(&data.content), None)
             } else if let Some(data) = node.cast::<CodeFence>() {
-                language = Some(data.info.clone());
-                content = Some(&data.content);
-            }
+                (Some(&data.content), Some(&data.info))
+            } else {
+                Default::default()
+            };
 
             if let Some(content) = content {
-                let mut syntax = None;
-                if let Some(language) = language {
-                    syntax = ss.find_syntax_by_token(&language);
-                }
-                let syntax = syntax.unwrap_or_else(|| ss.find_syntax_plain_text());
+                let syntax = language
+                    .and_then(|language| ss.find_syntax_by_token(language))
+                    .unwrap_or_else(|| ss.find_syntax_plain_text());
 
-                let html = highlighted_html_for_string(content, &ss, syntax, theme);
+                let mut html_generator =
+                    ClassedHTMLGenerator::new_with_class_style(syntax, &ss, ClassStyle::Spaced);
 
-                if let Ok(html) = html {
-                    node.replace(SyntectSnippet { html });
+                for line in LinesWithEndings::from(content) {
+                    if html_generator
+                        .parse_html_for_line_which_includes_newline(line)
+                        .is_err()
+                    {
+                        return;
+                    }
                 }
+
+                let content = html_generator.finalize();
+
+                if let Some(data) = node.cast_mut::<CodeBlock>() {
+                    data.content = content;
+                    data.raw = true;
+                } else if let Some(data) = node.cast_mut::<CodeFence>() {
+                    data.content = content;
+                    data.raw = true;
+                }
+
+                node.attrs.push(("class".into(), "code".into()));
             }
         });
     }

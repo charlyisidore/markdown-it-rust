@@ -26,13 +26,13 @@ impl CoreRule for AttrsRule {
                     return;
                 };
 
-                let (info, attrs) = parse_attrs(&text.content);
+                let (content, attrs) = parse_attrs(&text.content);
 
                 if attrs.is_empty() {
                     return;
                 }
 
-                text.content = info.to_string();
+                text.content = content.to_string();
                 node.attrs.extend(attrs);
             } else if let Some(code_fence) = node.cast_mut::<CodeFence>() {
                 // ```rust {#foo}
@@ -355,6 +355,24 @@ bar
         assert_eq!(
             md.parse("# My heading {#foo}").render(),
             "<h1 id=\"foo\">My heading</h1>\n"
+        );
+    }
+
+    #[cfg(feature = "syntect")]
+    #[test]
+    fn syntect_attrs() {
+        let md = &mut crate::MarkdownIt::new();
+        crate::plugins::cmark::add(md);
+        super::add(md);
+        crate::plugins::extra::syntect::add(md);
+        assert_eq!(
+            md.parse(
+                r#"``` {#foo}
+bar
+```"#
+            )
+            .render(),
+            "<pre><code id=\"foo\" class=\"code\"><span class=\"text plain\">bar\n</span></code></pre>\n"
         );
     }
 }

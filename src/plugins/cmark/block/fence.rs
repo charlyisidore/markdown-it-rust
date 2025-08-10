@@ -15,6 +15,7 @@ pub struct CodeFence {
     pub marker_len: usize,
     pub content: String,
     pub lang_prefix: &'static str,
+    pub raw: bool,
 }
 
 impl NodeValue for CodeFence {
@@ -33,7 +34,11 @@ impl NodeValue for CodeFence {
         fmt.cr();
         fmt.open("pre", &[]);
             fmt.open("code", &attrs);
-            fmt.text(&self.content);
+            if self.raw {
+                fmt.text_raw(&self.content);
+            } else {
+                fmt.text(&self.content);
+            }
             fmt.close("code");
         fmt.close("pre");
         fmt.cr();
@@ -158,6 +163,7 @@ impl BlockRule for FenceScanner {
             marker_len: len,
             content,
             lang_prefix,
+            raw: false,
         });
         Some((node, next_line - state.line + if have_end_marker { 1 } else { 0 }))
     }

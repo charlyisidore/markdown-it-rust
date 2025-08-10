@@ -11,6 +11,7 @@ const CODE_INDENT: i32 = 4;
 #[derive(Debug)]
 pub struct CodeBlock {
     pub content: String,
+    pub raw: bool,
 }
 
 impl NodeValue for CodeBlock {
@@ -18,7 +19,11 @@ impl NodeValue for CodeBlock {
         fmt.cr();
         fmt.open("pre", &[]);
             fmt.open("code", &node.attrs);
-            fmt.text(&self.content);
+            if self.raw {
+                fmt.text_raw(&self.content);
+            } else {
+                fmt.text(&self.content);
+            }
             fmt.close("code");
         fmt.close("pre");
         fmt.cr();
@@ -61,7 +66,7 @@ impl BlockRule for CodeScanner {
         let (mut content, _mapping) = state.get_lines(state.line, last, CODE_INDENT as usize + state.blk_indent, false);
         content += "\n";
 
-        let node = Node::new(CodeBlock { content });
+        let node = Node::new(CodeBlock { content, raw: false });
         //node.srcmap = state.get_map_from_offsets(mapping[0].1, state.line_offsets[last - 1].line_end);
 
         Some((node, last - state.line))
