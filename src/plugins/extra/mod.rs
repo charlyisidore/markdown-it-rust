@@ -6,6 +6,7 @@
 //!  - beautify links (cut "http://" from links and shorten paths)
 //!  - smartquotes and typographer
 //!  - code block highlighting using `syntect`
+//!  - footnotes
 //!  - identifiers, classes and attributes (`{#id .class key=value}`)
 //!
 //! ```rust
@@ -21,6 +22,7 @@
 //! ```
 pub mod attrs;
 pub mod beautify_links;
+pub mod footnote;
 pub mod heading_anchors;
 #[cfg(feature = "linkify")]
 pub mod linkify;
